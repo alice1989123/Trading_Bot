@@ -44,8 +44,7 @@ plt.show()
 
 
 
-baseAsset = Utils.symbol_info['baseAsset']
-quoteAsset = Utils.symbol_info['quoteAsset']
+
 min_Notational = float(Utils.symbol_info["filters"][3]["minNotional"])
 
 frame_time = 1 
@@ -66,42 +65,66 @@ min_order_quantity = Utils.fix_decimals_quantity(max_historicalprice , 0)
 steps=50
 percental_distribution = 0.1
 
-def gridStrategie  (activeOrders, availableFunds, indicadoranalysis={'none'}):
-        estimated_buys = min( math.floor(  availableFunds['quoteAsset'] / min_Notational #TODO: fixed minNominal! see how to correct it  this may be higher it minbid is higher
+
+orders = [{'symbol': 'SOLBNB', 'orderId': 230370261, 'orderListId': -1, 'clientOrderId': 'RhwU16BsXKd6DCtemnGpKD', 'price': '0.20000000', 'origQty': '0.50000000', 'executedQty': '0.00000000', 'cummulativeQuoteQty': '0.00000000', 'status': 'NEW', 'timeInForce': 'GTC', 'type': 'LIMIT', 'side': 'BUY', 'stopPrice': '0.00000000', 'icebergQty': '0.00000000', 'time': 1651934533000, 'updateTime': 1651934533000, 'isWorking': True, 'origQuoteOrderQty': '0.00000000'}]
+
+wallet = {'baseAsset': {'asset': 'SOL', 'free': '0.00000000', 'locked': '0.00000000'}, 'quoteAsset': {'asset': 'BNB', 'free': '1.28052742', 'locked': '0.10000000'}}
+
+def strategieValidation(  Strategie  , wallet , orders ):   # It validates if the propoused move is in valid
+
+    newOrders = Strategie ( orders , wallet  )
+
+
+    return 
+
+def wallet_float (wallet ):
+    wallet['baseAsset']['free'] = float ( wallet['baseAsset']['free'])
+    wallet['baseAsset']['locked'] = float ( wallet['baseAsset']['locked'])
+    wallet['quoteAsset']['free'] = float ( wallet['quoteAsset']['free'])
+    wallet['quoteAsset']['locked'] = float ( wallet['quoteAsset']['locked'])   
+
+    return (wallet)
+
+wallet_float(wallet )
+
+def gridStrategie  (activeOrders, wallet, indicadoranalysis={'none'}):
+        print( wallet)
+        
+        estimated_buys = min( math.floor(  wallet['quoteAsset']['free'] / min_Notational #TODO: fixed minNominal! see how to correct it  this may be higher it minbid is higher
         ) , steps ) 
-        estimated_sells = min( math.floor(  availableFunds['baseAsset'] / min_order_quantity #TODO: fixed minNominal! see how to correct it  this may be higher it minbid is higher
+        estimated_sells = min( math.floor(  wallet['baseAsset']['free'] / min_order_quantity #TODO: fixed minNominal! see how to correct it  this may be higher it minbid is higher
         ) , steps ) 
         buys =[]
         for i in range ( steps): 
-            if  availableFunds['quoteAsset'] < min_Notational:
+            if  wallet['quoteAsset']['free'] < min_Notational:
                 break             
             bid_price =  Utils.fix_decimals_price( indicadoranalysis['actual_price']*(1 - 0.1*(i/steps )) )
-            quantity =  Utils.fix_decimals_quantity( bid_price , bid_price * (availableFunds['quoteAsset'] / estimated_buys))
-            if availableFunds["quoteAsset"] - bid_price*quantity < 0:
+            quantity =  Utils.fix_decimals_quantity( bid_price , bid_price * (wallet['quoteAsset']['free'] / estimated_buys))
+            if wallet["quoteAsset"]['free'] - bid_price*quantity < 0:
                 break
             else:            
                 buys.append ({'id':i , 'price': bid_price , 'quantity': quantity})            
-                availableFunds["quoteAsset"]= availableFunds["quoteAsset"] - bid_price*quantity
+                wallet["quoteAsset"]['free']= wallet["quoteAsset"]['free'] - bid_price*quantity
 
         sells =[]
         for i in range ( steps): 
-            if  availableFunds['baseAsset'] < min_order_quantity:
+            if  wallet['baseAsset']['free'] < min_order_quantity:
                 break             
             ask_price =  Utils.fix_decimals_price( indicadoranalysis['actual_price']*(1 + 0.1*(i/steps )) )
-            quantity =  Utils.fix_decimals_quantity( ask_price , (availableFunds['baseAsset'] / estimated_sells))
-            if availableFunds["baseAsset"] - quantity < 0 :
+            quantity =  Utils.fix_decimals_quantity( ask_price , (wallet['baseAsset']['free'] / estimated_sells))
+            if wallet["baseAsset"]['free'] - quantity < 0 :
                 break
             else:
                 sells.append ({'id':-i , 'price': bid_price , 'quantity': quantity})            
-                availableFunds["baseAsset"]= availableFunds["baseAsset"] - quantity
+                wallet["baseAsset"]['free']= wallet["baseAsset"] - quantity
         
-        return( availableFunds ,  {"buy_orders": buys , "sell_orders":sells } )
+        return( wallet ,  {"buy_orders": buys , "sell_orders":sells } )
 
 
 print(
 
 
-gridStrategie(  "activeOrders"  , {"baseAsset":0 , 'quoteAsset':1 }   , {"actual_price":0.2} ) 
+gridStrategie(  orders  , wallet_float(wallet ) , {"actual_price":0.2} ) 
 
 
 )

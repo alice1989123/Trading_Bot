@@ -9,8 +9,7 @@ import numpy as np
 from config import symbol , fee
 
 
-balance = client.get_asset_balance(asset='BNB')
-print(balance)
+
 #tickers = client.get_symbol_ticker()
 """ base_price = float(list(filter(lambda c : c["symbol"] == symbol, tickers ))[0]['price'])
 

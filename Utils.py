@@ -4,6 +4,14 @@ from Client import client
 from config import symbol
 
 symbol_info = client.get_symbol_info(symbol)
+baseAsset = symbol_info['baseAsset']
+quoteAsset = symbol_info['quoteAsset']
+
+
+wallet = { 'baseAsset':client.get_asset_balance(asset=baseAsset) ,  "quoteAsset" : client.get_asset_balance(asset=quoteAsset) }
+
+orders = client.get_open_orders()
+
 
 def round_up(n, decimals):
     multiplier = 10 ** decimals
