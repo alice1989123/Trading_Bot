@@ -7,10 +7,17 @@ symbol_info = client.get_symbol_info(symbol)
 baseAsset = symbol_info['baseAsset']
 quoteAsset = symbol_info['quoteAsset']
 
+def filter (array , condition):
+      return [array[i] for i in range(len(array)) if condition(array[i])]
 
-wallet = { 'baseAsset':client.get_asset_balance(asset=baseAsset) ,  "quoteAsset" : client.get_asset_balance(asset=quoteAsset) }
 
-orders = client.get_open_orders()
+
+def wallet (  ):
+  symbol_info = client.get_symbol_info(symbol)
+  baseAsset = symbol_info['baseAsset']
+  quoteAsset = symbol_info['quoteAsset']
+  return {"baseAsset": client.get_asset_balance( baseAsset) , "quoteAsset": client.get_asset_balance(quoteAsset) }
+
 
 
 def round_up(n, decimals):
