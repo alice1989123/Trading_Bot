@@ -70,7 +70,7 @@ min_order_quantity = Utils.fix_decimals_quantity(max_historicalprice , 0)
 
 # 50 - 20 for buying and 50 for selling, steps distributed over 10% up and 10% down 
 
-steps=2
+steps=20
 percental_distribution = 0.1
 
 
@@ -101,8 +101,7 @@ def wallet_float (wallet ):
     wallet['quoteAsset']['locked'] = float ( wallet['quoteAsset']['locked'])   
 
     return (wallet)
-wallet = Utils.wallet ( )
-orders = client.get_open_orders()
+
 
 def gridStrategie  (activeOrders, wallet, indicadoranalysis={'none'}):
 
@@ -147,12 +146,12 @@ def gridStrategie  (activeOrders, wallet, indicadoranalysis={'none'}):
 
 #newWallet = walletUpdater( newOrders , wallet)
 #print( wallet ,newOrders , newWallet )
-windowSize = 50
 
-def exchangeResponse (orders , wallet , event):
+def exchangeResponse (orders , wallet , enviroment):
+    actual_price = enviroment.iloc[0]["Close"]
+
     orders_ = copy.deepcopy(orders)
     wallet_ = copy.deepcopy(wallet)
-    actual_price = event.iloc[-1]["Close"]
     buyorders= filter( orders_ , lambda x: x['side'] == "BUY" )
     sellOrders = filter( orders_ , lambda x: x['side'] == "SELL" )
     fillBuys =  filter(buyorders , lambda x: x['price'] >= actual_price)
@@ -163,35 +162,58 @@ def exchangeResponse (orders , wallet , event):
         orders_.remove(buy)
     for sell in fillSells:
         wallet_['baseAsset']['locked'] = wallet_['baseAsset']['locked'] - sell['quantity']
-        wallet_['quoteAsset']['free'] = wallet_['quoteAsset']['free'] + sell["price"] * sell['price']
+        wallet_['quoteAsset']['free'] = wallet_['quoteAsset']['free'] + sell["price"] * sell['quantity']
         orders_.remove(sell)
-    return  orders_ , wallet_
+    return     orders_ , wallet_
     
+     
+        
 
-        
-        
 
  
 
 
 
-for j in range (  1
-    #int( round( df.size /windowSize))
-    ):
 
-    event = df.iloc[windowSize*j: windowSize*j+50]
-    actualprice = windowSize*j
+def BotAction ( orders, wallet , enviroment) :
 
-    wallet = {'baseAsset': {'asset': 'SOL', 'free': 0, 'locked': 0.0}, 'quoteAsset': {'asset': 'BNB', 'free': 10, 'locked': 0.0}}
+    actual_price = enviroment.iloc[-1]["Close"]
+    wallet = {'baseAsset': {'asset': 'SOL', 'free': 20, 'locked': 0.0}, 'quoteAsset': {'asset': 'BNB', 'free': 0, 'locked': 0.0}}
     orders = []
-    actual_price = event.iloc[-1]["Close"]
     newOrders = gridStrategie( orders ,  wallet_float(wallet), {"actual_price":actual_price} ) 
     orders = OrderUpdater(orders , newOrders)
     wallet = walletUpdater(orders , wallet )
-    print ( exchangeResponse( wallet , orders  ,  df.iloc[windowSize*j+1: windowSize*j+1+50] ))
-
+    return   orders,  wallet 
+    #print ( exchangeResponse( wallet , orders  ,  df.iloc[windowSize*j+1: windowSize*j+1+50] ))
 
 
 
 #print(wallet_ , newOrders , walletUpdater( newOrders , wallet_ ))
+
+def walletValue(wallet , price):
+    return(
+    (wallet['baseAsset']['locked'] + wallet['baseAsset']['free'])* price 
+    + (wallet['quoteAsset']['locked'] +     wallet['quoteAsset']['free']))
+
+
+
+
+def enviromentGenerator(slot ,windowSize , df ):
+    return df.iloc[windowSize*slot: windowSize*slot+windowSize]
+
+def BacktesterRuner( initialWallet , df  , windowSize):
+    orders = [] 
+    wallet = initialWallet
+    for i in range( int( df.size /  windowSize ) ):   
+        actual_price = enviromentGenerator(i ,windowSize , df ) .iloc[-1]["Close"]
+        [orders , wallet] = BotAction (orders , wallet , enviromentGenerator(i ,windowSize , df ) )
+        [orders,wallet ]= exchangeResponse(orders ,wallet , enviromentGenerator(i+1 ,windowSize , df ) )
+        print(walletValue(wallet , actual_price ) )
+
+wallet = Utils.wallet ( )
+orders = client.get_open_orders()
+BacktesterRuner(wallet , df , 50  )
+
+
+
 
