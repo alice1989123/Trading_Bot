@@ -7,6 +7,7 @@ import Utils
 import numpy as np
 from Utils import filter
 import copy
+import Strategies.grid_bot
 
 
 
@@ -31,7 +32,7 @@ df = df.iloc[: , 1:]
 
 
 
-
+testWallet = {'baseAsset': {'asset': 'SOL', 'free': '3', 'locked': '0.00000000'}, 'quoteAsset': {'asset': 'BNB', 'free': '10', 'locked': '0.00000000'}}
 
 # Add all ta features
 
@@ -103,52 +104,12 @@ def wallet_float (wallet ):
     return (wallet)
 
 
-def gridStrategie  (activeOrders, wallet, indicadoranalysis={'none'}):
-
-
-        #Use a internal wallet to construct the transactions and be sure the strategie does not do silly stuff.. but the wallet update is donde by the Wallet Updater
-         
-        wallet_ = copy.deepcopy(wallet) 
-
-        estimated_buys = min( math.floor(  wallet_['quoteAsset']['free'] / min_Notational #TODO: fixed minNominal! see how to correct it  this may be higher it minbid is higher
-        ) , steps ) 
-        estimated_sells = min( math.floor(  wallet_['baseAsset']['free'] / min_order_quantity #TODO: fixed minNominal! see how to correct it  this may be higher it minbid is higher
-        ) , steps ) 
-        buys =[]
-        for i in range ( steps): 
-            if  wallet_['quoteAsset']['free'] < min_Notational:
-                break             
-            bid_price =  Utils.fix_decimals_price( indicadoranalysis['actual_price']*(1 - 0.02*(i +1 /steps )) )
-            quantity =  Utils.fix_decimals_quantity( bid_price , (wallet['quoteAsset']['free'] / estimated_buys)/bid_price)
-            if wallet_["quoteAsset"]['free'] - bid_price*quantity < 0:
-                break
-            else:            
-                buys.append ({'id':i +1 , 'price': bid_price , 'quantity': quantity , 'side':"BUY",  'type':"LIMIT"} )            
-                wallet_["quoteAsset"]['free']= wallet_["quoteAsset"]['free'] - bid_price*quantity
-                wallet_["quoteAsset" ]["locked"] = wallet_["quoteAsset" ]["locked"] + bid_price*quantity
-
-        sells =[]
-        for i in range ( steps): 
-            if  wallet_['baseAsset']['free'] < min_order_quantity:
-                break             
-            ask_price =  Utils.fix_decimals_price( indicadoranalysis['actual_price']*(1 + 0.02*(i +1/steps )) )
-            quantity =  Utils.fix_decimals_quantity( ask_price , (wallet['baseAsset']['free'] / estimated_sells))
-            if wallet_["baseAsset"]['free'] - quantity < 0 :
-                break
-            else:
-                sells.append ({'id':- (i+1) , 'price': ask_price , 'quantity': quantity , 'side':"SELL",  'type':"LIMIT"})            
-                wallet_["baseAsset"]['free']= wallet_["baseAsset"]['free'] - quantity
-                wallet_["baseAsset" ]["locked"] = wallet_["baseAsset" ]["locked"] + quantity
-
-        
-        return buys + sells      
-
 
 #newWallet = walletUpdater( newOrders , wallet)
 #print( wallet ,newOrders , newWallet )
 
 def exchangeResponse (orders , wallet , enviroment):
-    actual_price = enviroment.iloc[0]["Close"]
+    actual_price = enviroment.iloc[-1]["Close"]
 
     orders_ = copy.deepcopy(orders)
     wallet_ = copy.deepcopy(wallet)
@@ -175,12 +136,10 @@ def exchangeResponse (orders , wallet , enviroment):
 
 
 
-def BotAction ( orders, wallet , enviroment) :
+def BotAction ( orders, wallet , strategie , enviroment) :
 
     actual_price = enviroment.iloc[-1]["Close"]
-    wallet = {'baseAsset': {'asset': 'SOL', 'free': 20, 'locked': 0.0}, 'quoteAsset': {'asset': 'BNB', 'free': 0, 'locked': 0.0}}
-    orders = []
-    newOrders = gridStrategie( orders ,  wallet_float(wallet), {"actual_price":actual_price} ) 
+    newOrders = strategie( orders ,  wallet_float(wallet), {"actual_price":actual_price} ) 
     orders = OrderUpdater(orders , newOrders)
     wallet = walletUpdater(orders , wallet )
     return   orders,  wallet 
@@ -198,22 +157,32 @@ def walletValue(wallet , price):
 
 
 
-def enviromentGenerator(slot ,windowSize , df ):
-    return df.iloc[windowSize*slot: windowSize*slot+windowSize]
+def enviromentGenerator(slot,  df ):
+    return df.iloc[: slot]
 
-def BacktesterRuner( initialWallet , df  , windowSize):
+def BacktesterRuner( initialWallet , df  , stategie , windowSize=50):
     orders = [] 
     wallet = initialWallet
-    for i in range( int( df.size /  windowSize ) ):   
-        actual_price = enviromentGenerator(i ,windowSize , df ) .iloc[-1]["Close"]
-        [orders , wallet] = BotAction (orders , wallet , enviromentGenerator(i ,windowSize , df ) )
-        [orders,wallet ]= exchangeResponse(orders ,wallet , enviromentGenerator(i+1 ,windowSize , df ) )
-        print(walletValue(wallet , actual_price ) )
+    for i in range(  windowSize ,   df.size  ):   
+        actual_price = enviromentGenerator(i , df ) .iloc[-1]["Close"]
+        [orders , wallet] = BotAction (orders , wallet , stategie , enviromentGenerator(i, df ) )
+        [orders,wallet ]= exchangeResponse(orders ,wallet , enviromentGenerator(i+1 , df ) )
+        print(walletValue(wallet , actual_price ) ,len(orders) ) # TODO fix something is wrong is putting too much orders... maybe is just the strategie perse ... check strategie!!1
 
 wallet = Utils.wallet ( )
 orders = client.get_open_orders()
-BacktesterRuner(wallet , df , 50  )
+
+
+gb= Strategies.grid_bot.gridStrategie(0.30,50,min_Notational , min_order_quantity)
+
+
+""" print(  enviromentGenerator(50, df ) )
+ """
+BacktesterRuner(testWallet , df , gb.strategie    )
 
 
 
+""" print ( enviromentGenerator(1 ,50 , df )  ) 
 
+
+print (BotAction (orders , testWallet , enviromentGenerator(1 ,50 , df ) )) """
