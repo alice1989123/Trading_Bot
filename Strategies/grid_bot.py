@@ -8,7 +8,7 @@ class gridStrategie:
         self.percental_distribution = percental_distribution
         self.steps = steps
         self.min_Notational = min_Notational
-        self.min_order_quantity = min_order_quantity      
+        self.min_order_quantity = min_order_quantity
      
 
     def strategie  (self , activeOrders, wallet,  indicadoranalysis  ):        #Use a internal wallet to construct the transactions and be sure the strategie does not do silly stuff.. but the wallet update is donde by the Wallet Updater
@@ -22,9 +22,11 @@ class gridStrategie:
         buys =[]
         for i in range ( self.steps): 
             if  wallet_['quoteAsset']['free'] < self.min_Notational:
-                break             
+                break 
+            print(wallet_['quoteAsset']['free'] , self.min_Notational )            
             bid_price =  Utils.fix_decimals_price( indicadoranalysis['actual_price']*(1 - self.percental_distribution*(i +1 /self.steps )) )
             quantity =  Utils.fix_decimals_quantity( bid_price , (wallet['quoteAsset']['free'] / estimated_buys)/bid_price)
+            print( wallet_["quoteAsset"]['free'] , bid_price*quantity )
             if wallet_["quoteAsset"]['free'] - bid_price*quantity < 0:
                 break
             else:            
@@ -44,6 +46,7 @@ class gridStrategie:
                 sells.append ({'id':- (i+1) , 'price': ask_price , 'quantity': quantity , 'side':"SELL",  'type':"LIMIT"})            
                 wallet_["baseAsset"]['free']= wallet_["baseAsset"]['free'] - quantity
                 wallet_["baseAsset" ]["locked"] = wallet_["baseAsset" ]["locked"] + quantity
+
 
         
         return buys + sells      

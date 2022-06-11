@@ -110,13 +110,19 @@ def wallet_float (wallet ):
 
 def exchangeResponse (orders , wallet , enviroment):
     actual_price = enviroment.iloc[-1]["Close"]
+    #print(orders)
+    #print(actual_price)
 
     orders_ = copy.deepcopy(orders)
     wallet_ = copy.deepcopy(wallet)
     buyorders= filter( orders_ , lambda x: x['side'] == "BUY" )
     sellOrders = filter( orders_ , lambda x: x['side'] == "SELL" )
     fillBuys =  filter(buyorders , lambda x: x['price'] >= actual_price)
+    if len(fillBuys) > 0:
+        print('a buy!')
     fillSells = filter(sellOrders , lambda x: x['price'] <= actual_price)
+    if len(fillSells) > 0:
+        print('a sell!')
     for buy in fillBuys:
         wallet_['baseAsset']['free'] = wallet_['baseAsset']['free'] + buy['quantity']
         wallet_['quoteAsset']['locked'] = wallet_['quoteAsset']['locked'] - buy['quantity']*buy['price']
@@ -140,9 +146,10 @@ def BotAction ( orders, wallet , strategie , enviroment) :
 
     actual_price = enviroment.iloc[-1]["Close"]
     newOrders = strategie( orders ,  wallet_float(wallet), {"actual_price":actual_price} ) 
-    orders = OrderUpdater(orders , newOrders)
-    wallet = walletUpdater(orders , wallet )
-    return   orders,  wallet 
+    orders_ = OrderUpdater(orders , newOrders)
+    wallet = walletUpdater(orders_ , wallet )
+    return   orders_,  wallet 
+
     #print ( exchangeResponse( wallet , orders  ,  df.iloc[windowSize*j+1: windowSize*j+1+50] ))
 
 
@@ -151,8 +158,8 @@ def BotAction ( orders, wallet , strategie , enviroment) :
 
 def walletValue(wallet , price):
     return(
-    (wallet['baseAsset']['locked'] + wallet['baseAsset']['free'])* price 
-    + (wallet['quoteAsset']['locked'] +     wallet['quoteAsset']['free']))
+   float( (wallet['baseAsset']['locked'] + wallet['baseAsset']['free']) )* price 
+    + float((wallet['quoteAsset']['locked'] +     wallet['quoteAsset']['free'])))
 
 
 
@@ -163,22 +170,28 @@ def enviromentGenerator(slot,  df ):
 def BacktesterRuner( initialWallet , df  , stategie , windowSize=50):
     orders = [] 
     wallet = initialWallet
-    for i in range(  windowSize ,   df.size  ):   
-        actual_price = enviromentGenerator(i , df ) .iloc[-1]["Close"]
+    for i in range(  windowSize , windowSize +3  #df.size 
+    ):   
+        
+        actual_price = enviromentGenerator(i, df ).iloc[-1]["Close"]
+        #print( walletValue (wallet , actual_price )  )
         [orders , wallet] = BotAction (orders , wallet , stategie , enviromentGenerator(i, df ) )
+        print( wallet)
+     
         [orders,wallet ]= exchangeResponse(orders ,wallet , enviromentGenerator(i+1 , df ) )
-        print(walletValue(wallet , actual_price ) ,len(orders) ) # TODO fix something is wrong is putting too much orders... maybe is just the strategie perse ... check strategie!!1
+
+
 
 wallet = Utils.wallet ( )
 orders = client.get_open_orders()
 
 
-gb= Strategies.grid_bot.gridStrategie(0.30,50,min_Notational , min_order_quantity)
+gb= Strategies.grid_bot.gridStrategie(0.020,30,min_Notational , min_order_quantity)
 
 
 """ print(  enviromentGenerator(50, df ) )
  """
-BacktesterRuner(testWallet , df , gb.strategie    )
+BacktesterRuner(testWallet , df , gb.strategie  )
 
 
 
